@@ -1,0 +1,31 @@
+name: clipo_app
+description: "A new Flutter project."
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.6.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  url_launcher: ^6.3.1
+  receive_sharing_intent: ^1.8.1
+  share_plus: ^11.0.0
+  # Database
+  drift: ^2.26.1
+  drift_flutter: ^0.2.4
+  path_provider: ^2.1.5
+  salomon_bottom_bar: ^3.3.2
+  intl: ^0.20.2
+  flutter_slidable: ^4.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  drift_dev: ^2.26.1
+  build_runner: ^2.4.15
+
+flutter:
+  uses-material-design: true
