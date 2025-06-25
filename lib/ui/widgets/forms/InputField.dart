@@ -1,4 +1,3 @@
-import 'package:clipo_app/models/Category.dart';
 import 'package:flutter/material.dart';
 
 class InputFieldWidget extends StatelessWidget {

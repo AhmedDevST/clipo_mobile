@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:clipo_app/ui/screens/home_screen.dart';
+import 'package:clipo_app/screens/add_link_screen.dart';
+
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
+  final String? sharedUrl;
+  
+  const SplashScreen({super.key, this.sharedUrl});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -11,16 +15,29 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _navigateToHome();
+    _navigateAfterSplash();
   }
 
-  _navigateToHome() async {
+  _navigateAfterSplash() async {
+    // Show splash screen for 3 seconds
     await Future.delayed(const Duration(seconds: 3));
+    
     if (mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-      );
+      if (widget.sharedUrl != null) {
+        // If we have a shared URL, navigate to AddLinkScreen
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AddLinkScreen(url: widget.sharedUrl!),
+          ),
+        );
+      } else {
+        // Normal launch, navigate to HomeScreen
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
+      }
     }
   }
 
@@ -83,6 +100,18 @@ class _SplashScreenState extends State<SplashScreen> {
                 fontWeight: FontWeight.w400,
               ),
             ),
+            // Optional: Show a different message when sharing
+            if (widget.sharedUrl != null) ...[
+              const SizedBox(height: 30),
+              const Text(
+                'Processing shared link...',
+                style: TextStyle(
+                  color: Colors.white60,
+                  fontSize: 14,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
           ],
         ),
       ),

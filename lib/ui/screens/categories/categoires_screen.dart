@@ -6,6 +6,7 @@ import 'package:clipo_app/ui/widgets/category_card.dart';
 import 'package:clipo_app/ui/widgets/bottom_navigation_bar.dart';
 import 'package:clipo_app/ui/widgets/loading_widget.dart';
 import 'package:clipo_app/ui/widgets/empty_state_widget.dart';
+import 'package:clipo_app/ui/screens/categories/add_category_screen.dart';
 
 class CategoriesScreen extends StatefulWidget {
   const CategoriesScreen({super.key});
@@ -65,7 +66,12 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.add, color: Colors.black87),
-            onPressed: () {},
+            onPressed: () {
+               Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const NewCategoryPage()),
+    );
+            },
           ),
         ],
       ),

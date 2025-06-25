@@ -1,36 +1,16 @@
 import 'package:clipo_app/models/Category.dart';
 import 'package:flutter/material.dart';
-
+import 'package:clipo_app/utils/category_utils.dart';
 class CategoryCard extends StatelessWidget {
   final CategoryModel category;
 
   const CategoryCard({super.key, required this.category});
 
-  IconData getCategoryIcon(String? category) {
-    if (category == null) return Icons.bookmark_border;
-
-    switch (category.toLowerCase()) {
-      case 'work':
-        return Icons.work_outline;
-      case 'personal':
-        return Icons.person_outline;
-      case 'entertainment':
-        return Icons.movie_outlined;
-      case 'education':
-        return Icons.school_outlined;
-      case 'news':
-        return Icons.newspaper_outlined;
-      case 'shopping':
-        return Icons.shopping_bag_outlined;
-      case 'social':
-        return Icons.people_outline;
-      default:
-        return Icons.bookmark_border;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
+     final categoryColor = CategoryUtils.getColorFromName(category.color);
+    final IconData categoryIcon = CategoryUtils.getIconFromName(category.icon);
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -53,9 +33,9 @@ class CategoryCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Icon(
-                  getCategoryIcon(category.name),
+                 categoryIcon,
+                  color: categoryColor,
                   size: 24,
-                  color: Colors.black87,
                 ),
                 Text(
                   '${category.linkCount}',

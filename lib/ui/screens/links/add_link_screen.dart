@@ -8,8 +8,10 @@ import 'package:clipo_app/models/Category.dart';
 import 'package:clipo_app/ui/widgets/forms/InputField.dart';
 import 'package:clipo_app/ui/widgets/forms/CategoryDropdownWidget.dart';
 class AddLinkScreen extends StatefulWidget {
+  final String? url;
   const AddLinkScreen({
     Key? key,
+    this.url,
   }) : super(key: key);
 
   @override
@@ -43,6 +45,7 @@ class _AddLinkScreenState extends State<AddLinkScreen> {
     _database = AppDatabase();
     _linkRepo = LinkRepo(_database);
     _categoryRepo = CategoryRepo(_database);
+    _urlController.text = widget.url ?? '';
     _loadCategories();
   }
 

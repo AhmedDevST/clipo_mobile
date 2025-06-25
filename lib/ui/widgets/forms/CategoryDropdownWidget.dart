@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:clipo_app/models/Category.dart';
-
+import 'package:clipo_app/utils/category_utils.dart';
 class CategoryDropdownWidget extends StatelessWidget {
   final List<CategoryModel> categories;
   final CategoryModel? selectedCategory;
@@ -19,6 +19,13 @@ class CategoryDropdownWidget extends StatelessWidget {
     this.onRetry,
   }) : super(key: key);
 
+
+  Color _getCategoryColor(String? colorName) {
+    return CategoryUtils.getColorFromName(colorName);
+  }
+  IconData _getCategoryIcon(String? iconName) {
+    return CategoryUtils.getIconFromName(iconName);
+  }
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -179,61 +186,5 @@ class CategoryDropdownWidget extends StatelessWidget {
       },
       onChanged: onChanged,
     );
-  }
-
-  // Helper method to get icon from stored value
-  IconData _getCategoryIcon(String? iconName) {
-    switch (iconName?.toLowerCase()) {
-      case 'computer':
-        return Icons.computer;
-      case 'palette':
-        return Icons.palette;
-      case 'business':
-        return Icons.business;
-      case 'school':
-        return Icons.school;
-      case 'movie':
-        return Icons.movie;
-      case 'health_and_safety':
-        return Icons.health_and_safety;
-      case 'flight':
-        return Icons.flight;
-      case 'restaurant':
-        return Icons.restaurant;
-      case 'sports_soccer':
-        return Icons.sports_soccer;
-      case 'newspaper':
-        return Icons.newspaper;
-      default:
-        return Icons.category;
-    }
-  }
-
-  // Helper method to get color from stored value
-  Color _getCategoryColor(String? colorName) {
-    switch (colorName?.toLowerCase()) {
-      case 'blue':
-        return Colors.blue;
-      case 'purple':
-        return Colors.purple;
-      case 'green':
-        return Colors.green;
-      case 'orange':
-        return Colors.orange;
-      case 'red':
-        return Colors.red;
-      case 'teal':
-        return Colors.teal;
-      case 'indigo':
-        return Colors.indigo;
-      case 'amber':
-        return Colors.amber;
-      case 'deeporange':
-        return Colors.deepOrange;
-      case 'bluegrey':
-        return Colors.blueGrey;
-      default:
-        return Colors.grey;
-    }
   }
 }

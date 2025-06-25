@@ -1,4 +1,5 @@
 import 'package:clipo_app/database/local/db/appDatabase.dart';
+import 'package:clipo_app/database/local/repo/category_repo.dart';
 import 'package:clipo_app/models/Link.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
@@ -6,9 +7,19 @@ import 'package:flutter/material.dart';
 class LinkRepo {
   final AppDatabase db;
   LinkRepo(this.db);
+  late final CategoryRepo categoryRepo = CategoryRepo(db);
 
-  Future<void> saveSingleEntity(LinkModel model) {
-    return db.into(db.links).insertOnConflictUpdate(model.toCompanion());
+  Future<void> saveSingleEntity(LinkModel model) async {
+    await db.transaction(() async {
+      final existingLink = await (db.select(db.links)
+            ..where((tbl) => tbl.id.equals(model.id)))
+          .getSingleOrNull();
+      final isNewLink = existingLink == null;
+      await db.into(db.links).insertOnConflictUpdate(model.toCompanion());
+      if (isNewLink && model.category != null) {
+        await categoryRepo.updateLinkCount(model.category!.id, 1);
+      }
+    });
   }
 
   Future<void> saveListOfEntity(List<LinkModel> models) async {
@@ -65,6 +76,16 @@ class LinkRepo {
     bool favoritesOnly = false,
     bool archivedOnly = false,
   }) async {
+    // If no filters are provided, return empty list
+    final noFiltersProvided = (queryText == null || queryText.trim().isEmpty) &&
+        categoryId == null &&
+        dateRange == null &&
+        !favoritesOnly &&
+        !archivedOnly;
+
+    if (noFiltersProvided) {
+      return [];
+    }
     // Start with base query joining categories
     final query = db.select(db.links).join([
       leftOuterJoin(
@@ -182,7 +203,16 @@ class LinkRepo {
     }).toList();
   }
 
-  Future<void> deleteLink(String id) {
-    return (db.delete(db.links)..where((tbl) => tbl.id.equals(id))).go();
+  Future<void> deleteLink(String id) async {
+    await db.transaction(() async {
+      final link = await (db.select(db.links)
+            ..where((tbl) => tbl.id.equals(id)))
+          .getSingleOrNull();
+
+      if (link != null && link.categoryId != null) {
+        await categoryRepo.updateLinkCount(link.categoryId!, -1);
+      }
+      await (db.delete(db.links)..where((tbl) => tbl.id.equals(id))).go();
+    });
   }
 }

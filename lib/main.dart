@@ -1,3 +1,4 @@
+import 'package:clipo_app/ui/screens/links/add_link_screen.dart';
 import 'package:clipo_app/screens/add_link_screen.dart';
 import 'package:clipo_app/screens/home_screen.dart';
 import 'package:clipo_app/ui/screens/splash_screen.dart';
@@ -18,19 +19,33 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   late StreamSubscription _intentSub;
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+  String? _initialSharedUrl;
 
   @override
   void initState() {
     super.initState();
+    _checkInitialIntent();
+    _setupIntentListener();
+  }
 
+  void _checkInitialIntent() async {
+    // Check if app was opened with shared content
+    final initialMedia = await ReceiveSharingIntent.instance.getInitialMedia();
+    if (initialMedia.isNotEmpty) {
+      _initialSharedUrl = initialMedia.first.path;
+      print("\n==============================");
+      print("✅ Initial Shared Path Received:");
+      print(_initialSharedUrl);
+      print("==============================\n");
+    }
+  }
+
+  void _setupIntentListener() {
+    // Listen for shared content while app is running
     _intentSub = ReceiveSharingIntent.instance.getMediaStream().listen((value) {
       _handleSharedFiles(value);
     }, onError: (err) {
       print("getIntentDataStream error: $err");
-    });
-
-    ReceiveSharingIntent.instance.getInitialMedia().then((value) {
-      _handleSharedFiles(value);
     });
   }
 
@@ -38,17 +53,17 @@ class _MyAppState extends State<MyApp> {
     if (files.isNotEmpty) {
       final sharedPath = files.first.path;
       print("\n==============================");
-      print("✅ Shared Path Received:");
+      print("✅ Runtime Shared Path Received:");
       print(sharedPath);
       print("==============================\n");
 
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+     /* WidgetsBinding.instance.addPostFrameCallback((_) {
         _navigatorKey.currentState?.push(
           MaterialPageRoute(
             builder: (_) => AddLinkScreen(url: sharedPath),
           ),
         );
-      });
+      });*/
 
       ReceiveSharingIntent.instance.reset();
     }
@@ -70,7 +85,7 @@ class _MyAppState extends State<MyApp> {
         primaryColor: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: const SplashScreen(),
+      home: SplashScreen(sharedUrl: _initialSharedUrl),
     );
   }
 }

@@ -7,6 +7,7 @@ import 'package:clipo_app/ui/widgets/empty_state_widget.dart';
 import 'package:clipo_app/database/local/repo/category_repo.dart';
 import 'package:clipo_app/database/local/repo/link_repo.dart';
 import 'package:clipo_app/database/local/db/appDatabase.dart';
+import 'package:clipo_app/mixins/link_actions_mixin.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -16,8 +17,20 @@ class SearchScreen extends StatefulWidget {
 }
 
 class _SearchScreenState extends State<SearchScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, LinkActionsMixin {
   final TextEditingController _searchController = TextEditingController();
+  // Getters required by the mixin
+  @override
+  LinkRepo get linkRepo => _linkRepo;
+
+  @override
+  List<LinkModel> get links => _searchResults;
+
+  @override
+  set links(List<LinkModel> value) => _searchResults = value;
+
+  @override
+  Future<void> reloadLinks() => _performSearch();
 
   // Search and filter states
   CategoryModel? _selectedCategory;
@@ -26,18 +39,18 @@ class _SearchScreenState extends State<SearchScreen>
   bool _showFilters = false;
   bool _favoritesOnly = false;
   bool _archivedOnly = false;
-  
+
   late final AppDatabase _database;
   late final LinkRepo _linkRepo;
   late CategoryRepo _categoryRepo;
-  
+
   List<CategoryModel> _categories = [];
   List<LinkModel> _searchResults = [];
   List<LinkModel> _filteredResults = [];
   bool _isLoading = false;
   bool _hasSearched = false;
   bool _isCategoriesLoading = false;
-  
+
   // Animation controllers
   late AnimationController _filterAnimationController;
   late AnimationController _fadeAnimationController;
@@ -134,6 +147,13 @@ class _SearchScreenState extends State<SearchScreen>
 
   Future<void> _performSearch() async {
     final queryText = _searchController.text.trim();
+    // Close filters section after search
+    if (_showFilters) {
+      setState(() {
+        _showFilters = false;
+      });
+      _filterAnimationController.reverse();
+    }
 
     setState(() {
       _isLoading = true;
@@ -142,29 +162,16 @@ class _SearchScreenState extends State<SearchScreen>
 
     try {
       List<LinkModel> links;
-      
-      if (queryText.isEmpty) {
-        // If no search text, get all links
-        links = await _linkRepo.getAllLinks();
-      } else {
-        // Search with text
-        links = await _linkRepo.searchLinksAdvanced(
-          queryText: queryText,
-          categoryId: _selectedCategory?.id,
-          dateRange: _selectedDateRange,
-          favoritesOnly: _favoritesOnly,
-          archivedOnly: _archivedOnly,
-        );
-      }
-
-      // Apply additional filters if no query text
-      if (queryText.isEmpty) {
-        links = _applyFilters(links);
-      }
-
+      // Search with text
+      links = await _linkRepo.searchLinksAdvanced(
+        queryText: queryText,
+        categoryId: _selectedCategory?.id,
+        dateRange: _selectedDateRange,
+        favoritesOnly: _favoritesOnly,
+        archivedOnly: _archivedOnly,
+      );
       // Apply sorting
       links = _applySorting(links);
-
       setState(() {
         _isLoading = false;
         _searchResults = links;
@@ -186,37 +193,6 @@ class _SearchScreenState extends State<SearchScreen>
     }
   }
 
-  List<LinkModel> _applyFilters(List<LinkModel> links) {
-    List<LinkModel> filtered = List.from(links);
-
-    // Filter by category
-    if (_selectedCategory != null) {
-      filtered = filtered.where((link) => 
-        link.category?.id == _selectedCategory!.id).toList();
-    }
-
-    // Filter by date range
-    if (_selectedDateRange != null) {
-      filtered = filtered.where((link) {
-        final linkDate = link.createdAt;
-        return linkDate.isAfter(_selectedDateRange!.start.subtract(const Duration(days: 1))) &&
-               linkDate.isBefore(_selectedDateRange!.end.add(const Duration(days: 1)));
-      }).toList();
-    }
-
-    // Filter by favorites
-    if (_favoritesOnly) {
-      filtered = filtered.where((link) => link.isFavorite).toList();
-    }
-
-    // Filter by archived
-    if (_archivedOnly) {
-      filtered = filtered.where((link) => link.isArchived).toList();
-    }
-
-    return filtered;
-  }
-
   List<LinkModel> _applySorting(List<LinkModel> links) {
     List<LinkModel> sorted = List.from(links);
 
@@ -234,10 +210,12 @@ class _SearchScreenState extends State<SearchScreen>
         sorted.sort((a, b) => a.visitCount.compareTo(b.visitCount));
         break;
       case 'A-Z':
-        sorted.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+        sorted.sort(
+            (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
         break;
       case 'Z-A':
-        sorted.sort((a, b) => b.title.toLowerCase().compareTo(a.title.toLowerCase()));
+        sorted.sort(
+            (a, b) => b.title.toLowerCase().compareTo(a.title.toLowerCase()));
         break;
     }
 
@@ -255,8 +233,10 @@ class _SearchScreenState extends State<SearchScreen>
       _searchResults = [];
       _filteredResults = [];
       _hasSearched = false;
+      _showFilters = false; // Also close filters when clearing
     });
     _fadeAnimationController.reset();
+    _filterAnimationController.reset();
   }
 
   void _clearFilters() {
@@ -302,10 +282,10 @@ class _SearchScreenState extends State<SearchScreen>
 
   bool get _hasActiveFilters {
     return _selectedCategory != null ||
-           _selectedDateRange != null ||
-           _favoritesOnly ||
-           _archivedOnly ||
-           _selectedSort != 'Date Added (New to Old)';
+        _selectedDateRange != null ||
+        _favoritesOnly ||
+        _archivedOnly ||
+        _selectedSort != 'Date Added (New to Old)';
   }
 
   @override
@@ -324,11 +304,16 @@ class _SearchScreenState extends State<SearchScreen>
       body: Column(
         children: [
           _buildSearchSection(),
-          if (_showFilters) _buildFilterSection(),
-          if (_hasActiveFilters) _buildActiveFiltersChips(),
-          Expanded(
-            child: _buildResultsSection(),
-          ),
+          if (_showFilters)
+            Expanded(
+              child: _buildFilterSection(),
+            )
+          else ...[
+            if (_hasActiveFilters) _buildActiveFiltersChips(),
+            Expanded(
+              child: _buildResultsSection(),
+            ),
+          ],
         ],
       ),
     );
@@ -435,11 +420,18 @@ class _SearchScreenState extends State<SearchScreen>
                   _showFilters ? Icons.filter_list_off : Icons.filter_list,
                   size: 20,
                 ),
-                label: Text(_hasActiveFilters && !_showFilters ? 'Filters (${_getActiveFiltersCount()})' : 'Filters'),
+                label: Text(_hasActiveFilters && !_showFilters
+                    ? 'Filters (${_getActiveFiltersCount()})'
+                    : 'Filters'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _showFilters || _hasActiveFilters ? Colors.blue[600] : Colors.grey[200],
-                  foregroundColor: _showFilters || _hasActiveFilters ? Colors.white : Colors.black87,
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  backgroundColor: _showFilters || _hasActiveFilters
+                      ? Colors.blue[600]
+                      : Colors.grey[200],
+                  foregroundColor: _showFilters || _hasActiveFilters
+                      ? Colors.white
+                      : Colors.black87,
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
@@ -458,98 +450,106 @@ class _SearchScreenState extends State<SearchScreen>
       builder: (context, child) {
         return Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Colors.blue[50],
             border: const Border(
               bottom: BorderSide(color: Color(0xFFE0E0E0), width: 1),
             ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Filter Options',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: _clearFilters,
-                    child: Text(
-                      'Clear Filters',
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Filter Options',
                       style: TextStyle(
-                        color: Colors.blue[600],
-                        fontWeight: FontWeight.w500,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // Quick filters row
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildQuickFilterChip(
-                      label: 'Favorites Only',
-                      isSelected: _favoritesOnly,
-                      icon: Icons.favorite,
-                      onTap: () {
-                        setState(() {
-                          _favoritesOnly = !_favoritesOnly;
-                        });
-                      },
+                    TextButton(
+                      onPressed: _clearFilters,
+                      child: Text(
+                        'Clear Filters',
+                        style: TextStyle(
+                          color: Colors.blue[600],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildQuickFilterChip(
-                      label: 'Archived Only',
-                      isSelected: _archivedOnly,
-                      icon: Icons.archive,
-                      onTap: () {
-                        setState(() {
-                          _archivedOnly = !_archivedOnly;
-                        });
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // Category filter
-              _buildFilterSection2('Category', 
-                CategoryDropdownWidget(
-                  categories: _categories,
-                  selectedCategory: _selectedCategory,
-                  onChanged: (category) {
-                    setState(() {
-                      _selectedCategory = category;
-                    });
-                  },
+                  ],
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-              // Date range filter
-              _buildFilterSection2('Date Range', 
-                _buildDateRangeSelector(),
-              ),
-              const SizedBox(height: 16),
+                // Quick filters row
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildQuickFilterChip(
+                        label: 'Favorites Only',
+                        isSelected: _favoritesOnly,
+                        icon: Icons.favorite,
+                        onTap: () {
+                          setState(() {
+                            _favoritesOnly = !_favoritesOnly;
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildQuickFilterChip(
+                        label: 'Archived Only',
+                        isSelected: _archivedOnly,
+                        icon: Icons.archive,
+                        onTap: () {
+                          setState(() {
+                            _archivedOnly = !_archivedOnly;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
 
-              // Sort options
-              _buildFilterSection2('Sort By', 
-                _buildSortDropdown(),
-              ),
-            ],
+                // Category filter
+                _buildFilterSection2(
+                  'Category',
+                  CategoryDropdownWidget(
+                    categories: _categories,
+                    selectedCategory: _selectedCategory,
+                    onChanged: (category) {
+                      setState(() {
+                        _selectedCategory = category;
+                      });
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Date range filter
+                _buildFilterSection2(
+                  'Date Range',
+                  _buildDateRangeSelector(),
+                ),
+                const SizedBox(height: 16),
+
+                // Sort options
+                _buildFilterSection2(
+                  'Sort By',
+                  _buildSortDropdown(),
+                ),
+
+                // Add some bottom padding to ensure last item is visible
+                const SizedBox(height: 20),
+              ],
+            ),
           ),
         );
       },
@@ -714,7 +714,8 @@ class _SearchScreenState extends State<SearchScreen>
 
     if (_selectedDateRange != null) {
       chips.add(_buildFilterChip(
-        label: 'Date: ${_formatDate(_selectedDateRange!.start)} - ${_formatDate(_selectedDateRange!.end)}',
+        label:
+            'Date: ${_formatDate(_selectedDateRange!.start)} - ${_formatDate(_selectedDateRange!.end)}',
         onRemove: () => setState(() => _selectedDateRange = null),
       ));
     }
@@ -736,7 +737,8 @@ class _SearchScreenState extends State<SearchScreen>
     if (_selectedSort != 'Date Added (New to Old)') {
       chips.add(_buildFilterChip(
         label: 'Sort: $_selectedSort',
-        onRemove: () => setState(() => _selectedSort = 'Date Added (New to Old)'),
+        onRemove: () =>
+            setState(() => _selectedSort = 'Date Added (New to Old)'),
       ));
     }
 
@@ -801,7 +803,13 @@ class _SearchScreenState extends State<SearchScreen>
     }
 
     if (_searchResults.isEmpty) {
-      return _buildNoResultsState();
+      return EmptyStateWidget(
+        icon: Icons.search_off,
+        title: 'No results found',
+        subtitle:
+            'Try adjusting your search terms or filters\nto find what you\'re looking for.',
+        onAction: _clearSearch,
+      );
     }
 
     return _buildResultsList();
@@ -845,16 +853,6 @@ class _SearchScreenState extends State<SearchScreen>
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildNoResultsState() {
-    return EmptyStateWidget(
-      icon: Icons.search_off,
-      title: 'No results found',
-      subtitle: 'Try adjusting your search terms or filters\nto find what you\'re looking for.',
-      actionText: 'Clear Filters',
-      onAction: _clearSearch,
     );
   }
 
@@ -903,22 +901,10 @@ class _SearchScreenState extends State<SearchScreen>
           Expanded(
             child: LinksListWidget(
               links: _searchResults,
-              onTap: (link) {
-                // Handle link tap
-              },
-              onDelete: (link) {
-                // Handle delete
-                setState(() {
-                  _searchResults.removeWhere((l) => l.id == link.id);
-                });
-              },
-              onToggleFavorite: (link) {
-                // Handle favorite toggle - refresh results
-                _performSearch();
-              },
-              onShare: (link) {
-                // Handle share
-              },
+              onTap: (link) => handleLinkTap(link),
+              onDelete: (link) => deleteLink(link),
+              onToggleFavorite: (link) => toggleFavorite(link),
+              onShare: (link) => shareLink(link),
               fadeAnimation: _fadeAnimation,
             ),
           ),
