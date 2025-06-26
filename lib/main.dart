@@ -19,25 +19,11 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   late StreamSubscription _intentSub;
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
-  String? _initialSharedUrl;
 
   @override
   void initState() {
     super.initState();
-    _checkInitialIntent();
     _setupIntentListener();
-  }
-
-  void _checkInitialIntent() async {
-    // Check if app was opened with shared content
-    final initialMedia = await ReceiveSharingIntent.instance.getInitialMedia();
-    if (initialMedia.isNotEmpty) {
-      _initialSharedUrl = initialMedia.first.path;
-      print("\n==============================");
-      print("✅ Initial Shared Path Received:");
-      print(_initialSharedUrl);
-      print("==============================\n");
-    }
   }
 
   void _setupIntentListener() {
@@ -57,7 +43,7 @@ class _MyAppState extends State<MyApp> {
       print(sharedPath);
       print("==============================\n");
 
-     /* WidgetsBinding.instance.addPostFrameCallback((_) {
+      /* WidgetsBinding.instance.addPostFrameCallback((_) {
         _navigatorKey.currentState?.push(
           MaterialPageRoute(
             builder: (_) => AddLinkScreen(url: sharedPath),
@@ -75,7 +61,7 @@ class _MyAppState extends State<MyApp> {
     super.dispose();
   }
 
-  @override
+  @override  
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Gestionnaire de Liens',
@@ -85,7 +71,7 @@ class _MyAppState extends State<MyApp> {
         primaryColor: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: SplashScreen(sharedUrl: _initialSharedUrl),
+      home: SplashScreen(), // No sharedUrl parameter - splash will check itself
     );
   }
 }

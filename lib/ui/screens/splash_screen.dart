@@ -1,34 +1,61 @@
 import 'package:flutter/material.dart';
 import 'package:clipo_app/ui/screens/home_screen.dart';
-import 'package:clipo_app/screens/add_link_screen.dart';
+import 'package:clipo_app/ui/screens/links/add_link_screen.dart';
+import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
 class SplashScreen extends StatefulWidget {
-  final String? sharedUrl;
-  
-  const SplashScreen({super.key, this.sharedUrl});
+  const SplashScreen({super.key});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  String? _sharedUrl;
+  bool _isCheckingIntent = true;
+
   @override
   void initState() {
     super.initState();
-    _navigateAfterSplash();
+    _checkInitialIntentAndNavigate();
   }
 
-  _navigateAfterSplash() async {
-    // Show splash screen for 3 seconds
+  Future<void> _checkInitialIntentAndNavigate() async {
+    String? initialSharedUrl;
+    
+    try {
+      // Check for shared media files
+      final initialMedia = await ReceiveSharingIntent.instance.getInitialMedia();
+      if (initialMedia.isNotEmpty) {
+        initialSharedUrl = initialMedia.first.path;
+        print("\n==============================");
+        print("✅ Initial Shared Path Received:");
+        print(initialSharedUrl);
+        print("==============================\n");
+      }
+    } catch (e) {
+      print("Error checking initial intent: $e");
+    }
+    
+    // Update state to show the correct message
+    if (mounted) {
+      setState(() {
+        _sharedUrl = initialSharedUrl;
+        _isCheckingIntent = false;
+      });
+    }
+    
+    // Wait for splash screen duration (you can adjust this)
     await Future.delayed(const Duration(seconds: 3));
     
+    // Navigate based on whether we have a shared URL
     if (mounted) {
-      if (widget.sharedUrl != null) {
-        // If we have a shared URL, navigate to AddLinkScreen
+      if (initialSharedUrl != null) {
+        // Navigate to AddLinkScreen with the shared URL
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => AddLinkScreen(url: widget.sharedUrl!),
+            builder: (context) => AddLinkScreen(url: initialSharedUrl!),
           ),
         );
       } else {
@@ -84,7 +111,7 @@ class _SplashScreenState extends State<SplashScreen> {
             ),
             const SizedBox(height: 40),
             const Text(
-              'LinkSaver',
+              'Clipo',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 32,
@@ -100,9 +127,18 @@ class _SplashScreenState extends State<SplashScreen> {
                 fontWeight: FontWeight.w400,
               ),
             ),
-            // Optional: Show a different message when sharing
-            if (widget.sharedUrl != null) ...[
-              const SizedBox(height: 30),
+            const SizedBox(height: 30),
+            // Dynamic message based on sharing status
+            if (_isCheckingIntent)
+              const Text(
+                'Initializing...',
+                style: TextStyle(
+                  color: Colors.white60,
+                  fontSize: 14,
+                  fontStyle: FontStyle.italic,
+                ),
+              )
+            else if (_sharedUrl != null)
               const Text(
                 'Processing shared link...',
                 style: TextStyle(
@@ -110,8 +146,16 @@ class _SplashScreenState extends State<SplashScreen> {
                   fontSize: 14,
                   fontStyle: FontStyle.italic,
                 ),
+              )
+            else
+              const Text(
+                'Welcome back!',
+                style: TextStyle(
+                  color: Colors.white60,
+                  fontSize: 14,
+                  fontStyle: FontStyle.italic,
+                ),
               ),
-            ],
           ],
         ),
       ),
