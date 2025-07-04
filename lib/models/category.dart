@@ -23,6 +23,24 @@ class CategoryModel {
     this.linkCount = 0,
     this.isDefault = false,
   });
+  String toString() {
+    return 'LinkModel(id: $id, name: $name, description: $description, createdAt: $createdAt, updatedAt: $updatedAt)';
+  }
+  CategoryModel copyWith({
+    String? id,
+    String? name,
+    String? description,
+    String? color,
+  }) {
+    return CategoryModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      color: color ?? this.color,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+    );
+  }
 }
 
 // Mapping between CategoryModel and Category
@@ -54,4 +72,3 @@ extension CategoryModelCompanion on CategoryModel {
         isDefault: Value(isDefault),
       );
 }
-

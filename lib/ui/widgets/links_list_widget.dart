@@ -8,6 +8,7 @@ class LinksListWidget extends StatelessWidget {
   final void Function(LinkModel) onDelete;
   final void Function(LinkModel) onToggleFavorite;
   final void Function(LinkModel) onShare;
+   final void Function(LinkModel) onEdit;
   final Animation<double>? fadeAnimation;
 
   const LinksListWidget({
@@ -15,6 +16,7 @@ class LinksListWidget extends StatelessWidget {
     required this.links,
     required this.onTap,
     required this.onDelete,
+    required this.onEdit,
     required this.onToggleFavorite,
     required this.onShare,
     this.fadeAnimation,
@@ -31,6 +33,7 @@ class LinksListWidget extends StatelessWidget {
           padding: const EdgeInsets.only(bottom: 12),
           child: SlidableLinkItem(
             link: link,
+            onEdit:() => onEdit(link) ,
             onTap: () => onTap(link),
             onDelete: () => onDelete(link),
             onToggleFavorite: () => onToggleFavorite(link),

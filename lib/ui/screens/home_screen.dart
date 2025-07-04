@@ -9,6 +9,7 @@ import 'package:clipo_app/database/local/repo/link_repo.dart';
 import 'package:clipo_app/ui/widgets/bottom_navigation_bar.dart';
 import 'package:clipo_app/ui/screens/links/add_link_screen.dart';
 import 'package:clipo_app/mixins/link_actions_mixin.dart';
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -16,7 +17,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> 
+class _HomeScreenState extends State<HomeScreen>
     with TickerProviderStateMixin, LinkActionsMixin {
   final int _selectedIndex = 0;
 
@@ -30,10 +31,10 @@ class _HomeScreenState extends State<HomeScreen>
   // Getters required by the mixin
   @override
   LinkRepo get linkRepo => _linkRepo;
-  
+
   @override
   List<LinkModel> get links => _links;
-  
+
   @override
   set links(List<LinkModel> value) => _links = value;
 
@@ -103,6 +104,7 @@ class _HomeScreenState extends State<HomeScreen>
     _database.close();
     super.dispose();
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -177,6 +179,7 @@ class _HomeScreenState extends State<HomeScreen>
                 )
               : LinksListWidget(
                   links: _links,
+                  onEdit: (link) => handleEditLink(link),
                   onTap: (link) => handleLinkTap(link),
                   onDelete: (link) => deleteLink(link),
                   onToggleFavorite: (link) => toggleFavorite(link),

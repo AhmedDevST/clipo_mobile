@@ -1,11 +1,7 @@
-import 'package:clipo_app/ui/screens/links/add_link_screen.dart';
-import 'package:clipo_app/screens/add_link_screen.dart';
-import 'package:clipo_app/screens/home_screen.dart';
 import 'package:clipo_app/ui/screens/splash_screen.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
-import 'package:clipo_app/screens/CategoryPage.dart';
 
 void main() {
   runApp(MyApp());

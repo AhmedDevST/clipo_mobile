@@ -1,4 +1,5 @@
 // mixins/link_actions_mixin.dart
+import 'package:clipo_app/ui/screens/links/edit_link_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:clipo_app/models/Link.dart';
@@ -9,7 +10,7 @@ mixin LinkActionsMixin<T extends StatefulWidget> on State<T> {
   LinkRepo get linkRepo;
   List<LinkModel> get links;
   set links(List<LinkModel> value);
-  
+
   Future<void> reloadLinks();
 
   // Common link action methods
@@ -26,7 +27,7 @@ mixin LinkActionsMixin<T extends StatefulWidget> on State<T> {
         color: Colors.red,
       ),
     );
-    
+
     if (confirmed == true) {
       try {
         await linkRepo.deleteLink(link.id!);
@@ -42,14 +43,14 @@ mixin LinkActionsMixin<T extends StatefulWidget> on State<T> {
     try {
       await linkRepo.toggleIsFavorite(link.id!);
       final updatedLink = link.copyWith(isFavorite: !link.isFavorite);
-      
+
       setState(() {
         final index = links.indexWhere((l) => l.id == link.id);
         if (index != -1) {
           links[index] = updatedLink;
         }
       });
-      
+
       showSuccessSnackBar(
         updatedLink.isFavorite
             ? 'Added to favorites'
@@ -76,7 +77,7 @@ mixin LinkActionsMixin<T extends StatefulWidget> on State<T> {
     try {
       await linkRepo.updateLastVisite(link.id!);
       final updatedLink = link.copyWith(lastVisited: link.lastVisited);
-      
+
       setState(() {
         final index = links.indexWhere((l) => l.id == link.id);
         if (index != -1) {
@@ -92,6 +93,15 @@ mixin LinkActionsMixin<T extends StatefulWidget> on State<T> {
     if (link.url != null) {
       await launchURL(link.url!);
       await updateLastVisite(link);
+    }
+  }
+
+  void handleEditLink(LinkModel link) async {
+    if (link != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const EditLinkScreen()),
+      );
     }
   }
 

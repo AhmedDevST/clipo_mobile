@@ -7,6 +7,9 @@ import 'package:clipo_app/ui/widgets/bottom_navigation_bar.dart';
 import 'package:clipo_app/ui/widgets/loading_widget.dart';
 import 'package:clipo_app/ui/widgets/empty_state_widget.dart';
 import 'package:clipo_app/ui/screens/categories/add_category_screen.dart';
+import 'package:clipo_app/ui/screens/categories/edit_category_screen.dart';
+import 'package:clipo_app/ui/widgets/dialog/ConfirmationDialog.dart';
+import 'package:clipo_app/ui/widgets/dialog/awesome_snackbar.dart';
 
 class CategoriesScreen extends StatefulWidget {
   const CategoriesScreen({super.key});
@@ -48,6 +51,66 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     });
   }
 
+  Future<void> deleteCategory(CategoryModel category) async {
+    bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => const ConfirmationDialog(
+        title: 'confirmation',
+        description: "Are you sure you want to delete ",
+        lottieUrl:
+            "https://lottie.host/728db5d2-c7eb-4150-bb0e-cc0cc1d1ad3e/0UrRRIVVSc.json",
+        confirmText: 'Delete',
+        cancelText: 'Cancel',
+        color: Colors.red,
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await _CatRepo.deleteCategory(category.id!);
+        await _loadCategories();
+        AwesomeSnackBarUtils.showSuccess(
+          context: context,
+          title: 'Success!',
+          message: 'Your operation completed successfully!',
+        );
+      } catch (e) {
+        showErrorSnackBar('Error deleting category: $e');
+      }
+    }
+  }
+
+  void showSuccessSnackBar(String message, Color backgroundColor) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: backgroundColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void showErrorSnackBar(String message) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red[600],
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -67,10 +130,11 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
           IconButton(
             icon: const Icon(Icons.add, color: Colors.black87),
             onPressed: () {
-               Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const NewCategoryPage()),
-    );
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const NewCategoryPage()),
+              );
             },
           ),
         ],
@@ -104,7 +168,17 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                       ),
                       itemCount: _categories.length,
                       itemBuilder: (context, index) {
-                        return CategoryCard(category: _categories[index]);
+                        return CategoryCard(
+                            category: _categories[index],
+                            onEdit: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => EditCategoryPage(
+                                      category: _categories[index]),
+                                )),
+                            onDelete: () {
+                              deleteCategory(_categories[index]);
+                            });
                       },
                     ),
         ),

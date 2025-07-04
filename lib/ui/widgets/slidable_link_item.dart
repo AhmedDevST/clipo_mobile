@@ -7,6 +7,7 @@ class SlidableLinkItem extends StatelessWidget {
   final LinkModel link;
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
+  final VoidCallback? onEdit;
   final VoidCallback? onToggleFavorite;
   final VoidCallback? onShare;
 
@@ -14,6 +15,7 @@ class SlidableLinkItem extends StatelessWidget {
     super.key,
     required this.link,
     this.onTap,
+    this.onEdit,
     this.onDelete,
     this.onToggleFavorite,
     this.onShare,
@@ -31,10 +33,12 @@ class SlidableLinkItem extends StatelessWidget {
             backgroundColor: Colors.teal[400]!,
             foregroundColor: Colors.white,
             icon: Icons.open_in_browser,
-            borderRadius: const BorderRadius.only(
-              topRight: Radius.circular(12),
-              bottomRight: Radius.circular(12),
-            ),
+          ),
+          SlidableAction(
+            onPressed: (context) => onShare?.call(),
+            backgroundColor: Colors.blue[600]!,
+            foregroundColor: Colors.white,
+            icon: Icons.share_outlined,
           ),
         ],
       ),
@@ -42,37 +46,33 @@ class SlidableLinkItem extends StatelessWidget {
         motion: const StretchMotion(),
         children: [
           SlidableAction(
-            onPressed: (context) => onShare?.call(),
-            backgroundColor: Colors.blue[600]!,
+            onPressed: (context) => onEdit?.call(),
+            backgroundColor: Colors.orange[600]!,
             foregroundColor: Colors.white,
-            icon: Icons.share_outlined,
+            icon: Icons.edit_outlined,
           ),
           SlidableAction(
             onPressed: (context) => onDelete?.call(),
             backgroundColor: Colors.red[600]!,
             foregroundColor: Colors.white,
             icon: Icons.delete_outline,
-            borderRadius: const BorderRadius.only(
-              topRight: Radius.circular(12),
-              bottomRight: Radius.circular(12),
-            ),
           ),
         ],
       ),
-      child:  Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.04),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: LinkCard(link: link, onToggleFavorite: onToggleFavorite),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
+        child: LinkCard(link: link, onToggleFavorite: onToggleFavorite),
+      ),
     );
   }
 }

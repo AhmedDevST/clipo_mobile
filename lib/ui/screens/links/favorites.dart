@@ -158,6 +158,7 @@ class _FavoritesScreenState extends State<FavoritesScreen>
                 )
               : LinksListWidget(
                   links: _links,
+                  onEdit: (link) => handleEditLink(link),
                   onTap: (link) => handleLinkTap(link),
                   onDelete: (link) => deleteLink(link),
                   onToggleFavorite: (link) => toggleFavorite(link),

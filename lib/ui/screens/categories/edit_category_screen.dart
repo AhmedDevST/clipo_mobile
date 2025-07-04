@@ -6,21 +6,23 @@ import 'package:clipo_app/models/Category.dart';
 import 'package:clipo_app/ui/widgets/forms/InputField.dart';
 import 'package:clipo_app/ui/screens/categories/categoires_screen.dart';
 
-class NewCategoryPage extends StatefulWidget {
-  final Function(CategoryModel)? onCategoryCreated;
+class EditCategoryPage extends StatefulWidget {
+  final CategoryModel category;
+  final Function(CategoryModel)? onCategoryUpdated;
   final List<CategoryModel>? existingCategories;
 
-  const NewCategoryPage({
+  const EditCategoryPage({
     Key? key,
-    this.onCategoryCreated,
+    required this.category,
+    this.onCategoryUpdated,
     this.existingCategories,
   }) : super(key: key);
 
   @override
-  State<NewCategoryPage> createState() => _NewCategoryPageState();
+  State<EditCategoryPage> createState() => _EditCategoryPageState();
 }
 
-class _NewCategoryPageState extends State<NewCategoryPage> {
+class _EditCategoryPageState extends State<EditCategoryPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
@@ -32,6 +34,7 @@ class _NewCategoryPageState extends State<NewCategoryPage> {
   String _selectedIcon = 'category';
   bool _setAsDefault = false;
   bool _isLoading = false;
+  bool _hasChanges = false;
 
   // Available colors
   final List<Map<String, dynamic>> _colors = [
@@ -66,6 +69,34 @@ class _NewCategoryPageState extends State<NewCategoryPage> {
     super.initState();
     _database = AppDatabase();
     _categoryRepo = CategoryRepo(_database);
+    _initializeFields();
+  }
+
+  void _initializeFields() {
+    _nameController.text = widget.category.name;
+    _descriptionController.text = widget.category.description ?? '';
+    _selectedColor = widget.category.color;
+    _selectedIcon = widget.category.icon ?? 'category';
+    _setAsDefault = widget.category.isDefault ?? false;
+
+    // Listen for changes
+    _nameController.addListener(_onFieldChanged);
+    _descriptionController.addListener(_onFieldChanged);
+  }
+
+  void _onFieldChanged() {
+    setState(() {
+      _hasChanges = _checkForChanges();
+    });
+  }
+
+  bool _checkForChanges() {
+    return _nameController.text.trim() != widget.category.name ||
+        _descriptionController.text.trim() !=
+            (widget.category.description ?? '') ||
+        _selectedColor != widget.category.color ||
+        _selectedIcon != widget.category.icon ||
+        _setAsDefault != (widget.category.isDefault ?? false);
   }
 
   @override
@@ -88,10 +119,12 @@ class _NewCategoryPageState extends State<NewCategoryPage> {
       return 'Category name must be less than 50 characters';
     }
 
-    // Check if category name already exists
+    // Check if category name already exists (excluding current category)
     final existingCategories = widget.existingCategories ?? [];
     final nameExists = existingCategories.any(
-      (cat) => cat.name.toLowerCase() == value.trim().toLowerCase(),
+      (cat) =>
+          cat.id != widget.category.id &&
+          cat.name.toLowerCase() == value.trim().toLowerCase(),
     );
 
     if (nameExists) {
@@ -126,13 +159,13 @@ class _NewCategoryPageState extends State<NewCategoryPage> {
     return iconMap['icon'] as IconData;
   }
 
-  Future<void> _saveCategory() async {
+  Future<void> _updateCategory() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
 
       try {
-        final newCategory = CategoryModel(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
+        final updatedCategory = CategoryModel(
+          id: widget.category.id,
           name: _nameController.text.trim(),
           description: _descriptionController.text.trim().isEmpty
               ? null
@@ -144,22 +177,22 @@ class _NewCategoryPageState extends State<NewCategoryPage> {
           isDefault: _setAsDefault,
         );
 
-        // Save to database
-        await _categoryRepo.saveSingleEntity(newCategory);
+        // Update in database
+        await _categoryRepo.saveSingleEntity(updatedCategory);
 
         if (mounted) {
           // Call callback if provided
-          widget.onCategoryCreated?.call(newCategory);
+          widget.onCategoryUpdated?.call(updatedCategory);
 
           // Show success message
-          AwesomeSnackBarUtils.showSuccess(context: context, title: "create category", message: 'Category "${newCategory.name}" created successfully!');
-           Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const CategoriesScreen()));
+          AwesomeSnackBarUtils.showSuccess(context: context, title: "update category", message: 'Category "${updatedCategory.name}" updated successfully!');
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const CategoriesScreen()));
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Error creating category: ${e.toString()}'),
+              content: Text('Error updating category: ${e.toString()}'),
               backgroundColor: Colors.red,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
@@ -176,139 +209,201 @@ class _NewCategoryPageState extends State<NewCategoryPage> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.close, color: Colors.black87),
-          onPressed: () =>    Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const CategoriesScreen())),
-        ),
-        title: const Text(
-          'New Category',
-          style: TextStyle(
-            color: Colors.black87,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
+  Future<bool> _onWillPop() async {
+    if (!_hasChanges) return true;
+
+    final bool? shouldDiscard = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
-        ),
-        centerTitle: true,
-      ),
-      body: Form(
-        key: _formKey,
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Name Field
-                    InputFieldWidget(
-                      controller: _nameController,
-                      label: 'Name',
-                      hint: 'Name',
-                      validator: _validateName,
-                      prefixIcon: Icons.label_outline,
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Description Field
-                    InputFieldWidget(
-                      controller: _descriptionController,
-                      label: 'Description',
-                      hint: 'Description',
-                      maxLines: 3,
-                      validator: _validateDescription,
-                      prefixIcon: Icons.description_outlined,
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Color Selection
-                    _buildColorSection(),
-                    const SizedBox(height: 24),
-
-                    // Icon Selection
-                    _buildIconSection(),
-                    const SizedBox(height: 24),
-
-                    // Set as Default
-                    _buildDefaultToggle(),
-                  ],
-                ),
+          title: const Text(
+            'Discard Changes?',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 18,
+            ),
+          ),
+          content: const Text(
+            'You have unsaved changes. Are you sure you want to discard them?',
+            style: TextStyle(fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text(
+                'Keep Editing',
+                style: TextStyle(color: Colors.blue),
               ),
             ),
-
-            // Bottom Save Button
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, -5),
-                  ),
-                ],
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red,
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _saveCategory,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        disabledBackgroundColor: Colors.grey[300],
-                      ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor:
-                                    AlwaysStoppedAnimation<Color>(Colors.white),
-                              ),
-                            )
-                          : const Text(
-                              'Save',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextButton(
-                    onPressed:
-                        _isLoading ? null : () =>   Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const CategoriesScreen())),
-                    child: const Text(
-                      'Cancel',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
+              child: const Text(
+                'Discard',
+                style: TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
           ],
+        );
+      },
+    );
+
+    return shouldDiscard ?? false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: Scaffold(
+        backgroundColor: Colors.grey[50],
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.close, color: Colors.black87),
+            onPressed: () async {
+              if (await _onWillPop()) {
+                  Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const CategoriesScreen()));
+              }
+            },
+          ),
+          title: const Text(
+            'Edit Category',
+            style: TextStyle(
+              color: Colors.black87,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          centerTitle: true,
+        ),
+        body: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Name Field
+                      InputFieldWidget(
+                        controller: _nameController,
+                        label: 'Name',
+                        hint: 'Name',
+                        validator: _validateName,
+                        prefixIcon: Icons.label_outline,
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Description Field
+                      InputFieldWidget(
+                        controller: _descriptionController,
+                        label: 'Description',
+                        hint: 'Description',
+                        maxLines: 3,
+                        validator: _validateDescription,
+                        prefixIcon: Icons.description_outlined,
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Color Selection
+                      _buildColorSection(),
+                      const SizedBox(height: 24),
+
+                      // Icon Selection
+                      _buildIconSection(),
+                      const SizedBox(height: 24),
+
+                      // Set as Default
+                      _buildDefaultToggle(),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Bottom Action Buttons
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, -5),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: (_isLoading || !_hasChanges)
+                            ? null
+                            : _updateCategory,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              _hasChanges ? Colors.blue : Colors.grey[300],
+                          foregroundColor:
+                              _hasChanges ? Colors.white : Colors.grey[600],
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white),
+                                ),
+                              )
+                            : const Text(
+                                'Save Changes',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextButton(
+                      onPressed: _isLoading
+                          ? null
+                          : () async {
+                              if (await _onWillPop()) {
+                                  Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const CategoriesScreen()));
+                              }
+                            },
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -339,6 +434,7 @@ class _NewCategoryPageState extends State<NewCategoryPage> {
               onTap: () {
                 setState(() {
                   _selectedColor = colorName;
+                  _hasChanges = _checkForChanges();
                 });
               },
               child: Container(
@@ -412,6 +508,7 @@ class _NewCategoryPageState extends State<NewCategoryPage> {
               onTap: () {
                 setState(() {
                   _selectedIcon = iconName;
+                  _hasChanges = _checkForChanges();
                 });
               },
               child: Container(
@@ -487,6 +584,7 @@ class _NewCategoryPageState extends State<NewCategoryPage> {
             onChanged: (value) {
               setState(() {
                 _setAsDefault = value;
+                _hasChanges = _checkForChanges();
               });
             },
             activeColor: Colors.blue,

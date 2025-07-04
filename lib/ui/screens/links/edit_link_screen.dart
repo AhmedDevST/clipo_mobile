@@ -11,18 +11,18 @@ import 'package:clipo_app/models/Category.dart';
 import 'package:clipo_app/ui/widgets/forms/InputField.dart';
 import 'package:clipo_app/ui/widgets/forms/CategoryDropdownWidget.dart';
 
-class AddLinkScreen extends StatefulWidget {
+class EditLinkScreen extends StatefulWidget {
   final String? url;
-  const AddLinkScreen({
+  const EditLinkScreen({
     Key? key,
     this.url,
   }) : super(key: key);
 
   @override
-  State<AddLinkScreen> createState() => _AddLinkScreenState();
+  State<EditLinkScreen> createState() => _EditLinkScreenState();
 }
 
-class _AddLinkScreenState extends State<AddLinkScreen> {
+class _EditLinkScreenState extends State<EditLinkScreen> {
   final _formKey = GlobalKey<FormState>();
   final _urlController = TextEditingController();
   final _titleController = TextEditingController();
@@ -242,10 +242,10 @@ class _AddLinkScreenState extends State<AddLinkScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.close, color: Colors.black87),
-          onPressed: () =>   Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HomeScreen())),
+          onPressed: () =>    Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HomeScreen())),
         ),
         title: const Text(
-          'Add Link',
+          'Edit Link',
           style: TextStyle(
             color: Colors.black87,
             fontSize: 18,
@@ -439,7 +439,7 @@ class _AddLinkScreenState extends State<AddLinkScreen> {
               )),
           const SizedBox(height: 12),
           TextButton(
-            onPressed: _isLoading ? null : () =>    Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HomeScreen())),
+            onPressed: _isLoading ? null : () =>   Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HomeScreen())),
             child: const Text(
               'Cancel',
               style: TextStyle(

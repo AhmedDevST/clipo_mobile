@@ -901,6 +901,7 @@ class _SearchScreenState extends State<SearchScreen>
           Expanded(
             child: LinksListWidget(
               links: _searchResults,
+               onEdit: (link) => handleEditLink(link),
               onTap: (link) => handleLinkTap(link),
               onDelete: (link) => deleteLink(link),
               onToggleFavorite: (link) => toggleFavorite(link),
