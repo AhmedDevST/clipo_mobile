@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:clipo_app/models/Link.dart';
 import 'package:clipo_app/database/local/repo/link_repo.dart';
 import 'package:clipo_app/ui/widgets/dialog/ConfirmationDialog.dart';
+import 'package:clipo_app/ui/widgets/dialog/awesome_snackbar.dart';
 
 mixin LinkActionsMixin<T extends StatefulWidget> on State<T> {
   LinkRepo get linkRepo;
@@ -32,9 +33,15 @@ mixin LinkActionsMixin<T extends StatefulWidget> on State<T> {
       try {
         await linkRepo.deleteLink(link.id!);
         await reloadLinks();
-        showSuccessSnackBar('Link deleted successfully', Colors.red[600]!);
+        AwesomeSnackBarUtils.showSuccess(
+            context: context,
+            title: 'delete link',
+            message: 'Link deleted successfully');
       } catch (e) {
-        showErrorSnackBar('Error deleting link: $e');
+        AwesomeSnackBarUtils.showError(
+            context: context,
+            title: 'delete link',
+            message: 'Error deleting link: $e');
       }
     }
   }
@@ -50,20 +57,23 @@ mixin LinkActionsMixin<T extends StatefulWidget> on State<T> {
           links[index] = updatedLink;
         }
       });
-
-      showSuccessSnackBar(
-        updatedLink.isFavorite
-            ? 'Added to favorites'
-            : 'Removed from favorites',
-        updatedLink.isFavorite ? Colors.pink[600]! : Colors.grey[600]!,
-      );
+      AwesomeSnackBarUtils.showSuccess(
+          context: context,
+          title: 'Favorites',
+          message: updatedLink.isFavorite
+              ? 'Added to favorites'
+              : 'Removed from favorites');
     } catch (e) {
-      showErrorSnackBar('Error updating favorite: $e');
+      AwesomeSnackBarUtils.showError(
+          context: context,
+          title: 'Error',
+          message: 'Error updating favorite: $e');
     }
   }
 
   Future<void> shareLink(LinkModel link) async {
-    showSuccessSnackBar('Sharing: ${link.title}', Colors.blue[600]!);
+    AwesomeSnackBarUtils.showInfo(
+        context: context, title: 'sharing', message: 'Sharing: ${link.title}');
   }
 
   Future<void> launchURL(String url) async {
@@ -85,7 +95,8 @@ mixin LinkActionsMixin<T extends StatefulWidget> on State<T> {
         }
       });
     } catch (e) {
-      showErrorSnackBar('Error updating link: $e');
+      AwesomeSnackBarUtils.showError(
+          context: context, title: 'Error', message: 'Error updating link: $e');
     }
   }
 
@@ -100,40 +111,11 @@ mixin LinkActionsMixin<T extends StatefulWidget> on State<T> {
     if (link != null) {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const EditLinkScreen()),
+        MaterialPageRoute(
+            builder: (context) => EditLinkScreen(
+                  link: link,
+                )),
       );
     }
-  }
-
-  // UI feedback methods
-  void showSuccessSnackBar(String message, Color backgroundColor) {
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: backgroundColor,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
-
-  void showErrorSnackBar(String message) {
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red[600],
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-      ),
-    );
   }
 }

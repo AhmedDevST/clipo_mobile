@@ -7,6 +7,7 @@ import 'package:clipo_app/ui/widgets/empty_state_widget.dart';
 import 'package:clipo_app/ui/widgets/links_list_widget.dart';
 import 'package:clipo_app/ui/widgets/loading_widget.dart';
 import 'package:clipo_app/mixins/link_actions_mixin.dart';
+import 'package:clipo_app/ui/widgets/dialog/awesome_snackbar.dart';
 
 class FavoritesScreen extends StatefulWidget {
   const FavoritesScreen({super.key});
@@ -17,7 +18,7 @@ class FavoritesScreen extends StatefulWidget {
 
 class _FavoritesScreenState extends State<FavoritesScreen>
     with TickerProviderStateMixin, LinkActionsMixin {
-  final int _selectedIndex = 2;
+  final int _selectedIndex = 3;
 
   late List<LinkModel> _links = [];
   late final AppDatabase _database;
@@ -95,14 +96,17 @@ class _FavoritesScreenState extends State<FavoritesScreen>
       });
 
       await reloadLinks(); // Reload to update favorites list
-      showSuccessSnackBar(
-        updatedLink.isFavorite
-            ? 'Added to favorites'
-            : 'Removed from favorites',
-        updatedLink.isFavorite ? Colors.pink[600]! : Colors.grey[600]!,
-      );
+      AwesomeSnackBarUtils.showSuccess(
+          context: context,
+          title: 'Favorites',
+          message: updatedLink.isFavorite
+              ? 'Added to favorites'
+              : 'Removed from favorites');
     } catch (e) {
-      showErrorSnackBar('Error updating favorite: $e');
+     AwesomeSnackBarUtils.showError(
+          context: context,
+          title: 'Error',
+          message: 'Error updating favorite: $e');
     }
   }
 

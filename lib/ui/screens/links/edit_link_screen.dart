@@ -12,10 +12,10 @@ import 'package:clipo_app/ui/widgets/forms/InputField.dart';
 import 'package:clipo_app/ui/widgets/forms/CategoryDropdownWidget.dart';
 
 class EditLinkScreen extends StatefulWidget {
-  final String? url;
-  const EditLinkScreen({
+  final LinkModel link;
+  EditLinkScreen({
     Key? key,
-    this.url,
+    required this.link,
   }) : super(key: key);
 
   @override
@@ -31,13 +31,14 @@ class _EditLinkScreenState extends State<EditLinkScreen> {
   final _newCategoryController = TextEditingController();
   late final AppDatabase _database;
   CategoryModel? _selectedCategory;
+  CategoryModel? _originalCategory; // Store original category for comparison
   bool _isFavorite = false;
   bool _isArchive = false;
   bool _isLoading = false;
   bool _isCategoriesLoading = false;
   bool _isCreatingNewCategory = false;
   bool _showCreateCategoryForm = false;
-
+  bool _hasChanges = false;
   List<CategoryModel> _categories = [];
   late LinkRepo _linkRepo;
   late CategoryRepo _categoryRepo;
@@ -48,8 +49,42 @@ class _EditLinkScreenState extends State<EditLinkScreen> {
     _database = AppDatabase();
     _linkRepo = LinkRepo(_database);
     _categoryRepo = CategoryRepo(_database);
-    _urlController.text = widget.url ?? '';
     _loadCategories();
+    _initializeFields();
+  }
+
+  void _initializeFields() {
+    _urlController.text = widget.link.url;
+    _titleController.text = widget.link.title;
+    _descriptionController.text = widget.link.description ?? '';
+    _notesController.text = widget.link.notes ?? '';
+    _selectedCategory = widget.link.category;
+    _originalCategory = widget.link.category; // Store original category
+    _isFavorite = widget.link.isFavorite;
+    _isArchive = widget.link.isArchived;
+
+    // Listen for changes
+    _urlController.addListener(_onFieldChanged);
+    _descriptionController.addListener(_onFieldChanged);
+    _notesController.addListener(_onFieldChanged);
+    _titleController.addListener(_onFieldChanged);
+  }
+
+  void _onFieldChanged() {
+    setState(() {
+      _hasChanges = _checkForChanges();
+    });
+  }
+
+  bool _checkForChanges() {
+    return _urlController.text.trim() != widget.link.url ||
+        _titleController.text.trim() != (widget.link.title) ||
+        _descriptionController.text.trim() != (widget.link.description ?? '') ||
+        _notesController.text.trim() != (widget.link.notes ?? '') ||
+        _isFavorite != widget.link.isFavorite ||
+        _isArchive != widget.link.isArchived ||
+        _selectedCategory?.id != _originalCategory?.id || // Compare category IDs
+        _showCreateCategoryForm && _newCategoryController.text.trim().isNotEmpty;
   }
 
   Future<void> _loadCategories() async {
@@ -59,13 +94,23 @@ class _EditLinkScreenState extends State<EditLinkScreen> {
       setState(() {
         _categories = categories;
         _isCategoriesLoading = false;
+        
+        // If we have a selected category, find it in the loaded categories
+        // to ensure we have the complete category object
+        if (_selectedCategory != null) {
+          final foundCategory = categories.firstWhere(
+            (cat) => cat.id == _selectedCategory!.id,
+            orElse: () => _selectedCategory!,
+          );
+          _selectedCategory = foundCategory;
+        }
       });
     } catch (e) {
       setState(() => _isCategoriesLoading = false);
       if (mounted) {
         AwesomeSnackBarUtils.showError(
             context: context,
-            title: "loading categories",
+            title: "Loading Categories",
             message: 'Error loading categories');
       }
     }
@@ -165,6 +210,8 @@ class _EditLinkScreenState extends State<EditLinkScreen> {
         // If creating new category, create it first
         if (_showCreateCategoryForm &&
             _newCategoryController.text.trim().isNotEmpty) {
+          setState(() => _isCreatingNewCategory = true);
+          
           final newCategory = CategoryModel(
             id: DateTime.now().millisecondsSinceEpoch.toString(),
             name: _newCategoryController.text.trim(),
@@ -177,13 +224,19 @@ class _EditLinkScreenState extends State<EditLinkScreen> {
 
           await _categoryRepo.saveSingleEntity(newCategory);
           categoryToUse = newCategory;
+          
+          // Add to categories list for future reference
+          setState(() {
+            _categories.add(newCategory);
+            _isCreatingNewCategory = false;
+          });
         } else {
           categoryToUse = _selectedCategory;
         }
 
-        // Create LinkModel instance
+        // Create updated LinkModel instance
         final linkModel = LinkModel(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          id: widget.link.id,
           url: _urlController.text.trim(),
           title: _titleController.text.trim().isEmpty
               ? ''
@@ -197,8 +250,8 @@ class _EditLinkScreenState extends State<EditLinkScreen> {
           category: categoryToUse,
           isFavorite: _isFavorite,
           isArchived: _isArchive,
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
+          createdAt: widget.link.createdAt, // Keep original creation date
+          updatedAt: DateTime.now(), // Update the modification date
         );
 
         // Save to database
@@ -207,8 +260,8 @@ class _EditLinkScreenState extends State<EditLinkScreen> {
         if (mounted) {
           AwesomeSnackBarUtils.showSuccess(
               context: context,
-              title: "Create Link",
-              message: 'Link saved successfully!');
+              title: "Update Link",
+              message: 'Link updated successfully!');
           Navigator.pushReplacement(context,
               MaterialPageRoute(builder: (context) => const HomeScreen()));
         }
@@ -216,127 +269,195 @@ class _EditLinkScreenState extends State<EditLinkScreen> {
         if (mounted) {
           AwesomeSnackBarUtils.showError(
               context: context,
-              title: "Create Link",
-              message: 'Error saving link !');
+              title: "Update Link",
+              message: 'Error updating link: ${e.toString()}');
         }
       } finally {
         if (mounted) {
-          setState(() => _isLoading = false);
+          setState(() {
+            _isLoading = false;
+            _isCreatingNewCategory = false;
+          });
         }
       }
     } else {
       // Show validation errors
       AwesomeSnackBarUtils.showWarning(
           context: context,
-          title: "Create Link",
+          title: "Update Link",
           message: 'Please enter correct data');
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.close, color: Colors.black87),
-          onPressed: () =>    Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HomeScreen())),
-        ),
-        title: const Text(
-          'Edit Link',
-          style: TextStyle(
-            color: Colors.black87,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
+  Future<bool> _onWillPop() async {
+    if (!_hasChanges) return true;
+    final bool? shouldDiscard = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
-        ),
-        centerTitle: true,
-      ),
-      body: Form(
-        key: _formKey,
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // URL Field
-                    InputFieldWidget(
-                      controller: _urlController,
-                      label: 'URL',
-                      hint: 'https://example.com',
-                      validator: _validateUrl,
-                      keyboardType: TextInputType.url,
-                      prefixIcon: Icons.link,
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Title Field
-                    InputFieldWidget(
-                      controller: _titleController,
-                      label: 'Title (optional)',
-                      hint: 'Enter title',
-                      validator: _validateTitle,
-                      prefixIcon: Icons.title,
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Description Field
-                    InputFieldWidget(
-                      controller: _descriptionController,
-                      label: 'Description (optional)',
-                      hint: 'Enter description',
-                      maxLines: 3,
-                      validator: _validateDescription,
-                      prefixIcon: Icons.description,
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Notes Field
-                    InputFieldWidget(
-                      controller: _notesController,
-                      label: 'Notes (optional)',
-                      hint: 'Add your notes',
-                      maxLines: 3,
-                      validator: _validateNotes,
-                      prefixIcon: Icons.note,
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Category Selection/Creation
-                    _buildCategorySection(),
-                    const SizedBox(height: 24),
-
-                    // Toggle Options
-                    ToggleOptionWidget(
-                      title: 'Favorite',
-                      value: _isFavorite,
-                      onChanged: (value) => setState(() => _isFavorite = value),
-                      icon: Icons.favorite_outline,
-                    ),
-
-                  //  const SizedBox(height: 16),
-                   /* ToggleOptionWidget(
-                      title: 'Archive',
-                      value: _isArchive,
-                      onChanged: (value) => setState(() => _isArchive = value),
-                      icon: Icons.archive_outlined,
-                    ),*/
-                  ],
-                ),
+          title: const Text(
+            'Discard Changes?',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 18,
+            ),
+          ),
+          content: const Text(
+            'You have unsaved changes. Are you sure you want to discard them?',
+            style: TextStyle(fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text(
+                'Keep Editing',
+                style: TextStyle(color: Colors.blue),
               ),
             ),
-
-            // Bottom Actions
-            _buildBottomActions(),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red,
+              ),
+              child: const Text(
+                'Discard',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
           ],
-        ),
-      ),
+        );
+      },
     );
+
+    return shouldDiscard ?? false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return WillPopScope(
+        onWillPop: _onWillPop,
+        child: Scaffold(
+          backgroundColor: Colors.grey[50],
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.close, color: Colors.black87),
+              onPressed: () async {
+                if (await _onWillPop()) {
+                  Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const HomeScreen()));
+                }
+              },
+            ),
+            title: const Text(
+              'Edit Link',
+              style: TextStyle(
+                color: Colors.black87,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            centerTitle: true,
+          ),
+          body: Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // URL Field
+                        InputFieldWidget(
+                          controller: _urlController,
+                          label: 'URL',
+                          hint: 'https://example.com',
+                          validator: _validateUrl,
+                          keyboardType: TextInputType.url,
+                          prefixIcon: Icons.link,
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Title Field
+                        InputFieldWidget(
+                          controller: _titleController,
+                          label: 'Title (optional)',
+                          hint: 'Enter title',
+                          validator: _validateTitle,
+                          prefixIcon: Icons.title,
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Description Field
+                        InputFieldWidget(
+                          controller: _descriptionController,
+                          label: 'Description (optional)',
+                          hint: 'Enter description',
+                          maxLines: 3,
+                          validator: _validateDescription,
+                          prefixIcon: Icons.description,
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Notes Field
+                        InputFieldWidget(
+                          controller: _notesController,
+                          label: 'Notes (optional)',
+                          hint: 'Add your notes',
+                          maxLines: 3,
+                          validator: _validateNotes,
+                          prefixIcon: Icons.note,
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Category Selection/Creation
+                        _buildCategorySection(),
+                        const SizedBox(height: 24),
+
+                        // Toggle Options
+                        ToggleOptionWidget(
+                          title: 'Favorite',
+                          value: _isFavorite,
+                          onChanged: (value) {
+                            setState(() {
+                              _isFavorite = value;
+                              _hasChanges = _checkForChanges();
+                            });
+                          },
+                          icon: Icons.favorite_outline,
+                        ),
+
+                        const SizedBox(height: 16),
+                        ToggleOptionWidget(
+                          title: 'Archive',
+                          value: _isArchive,
+                          onChanged: (value) {
+                            setState(() {
+                              _isArchive = value;
+                              _hasChanges = _checkForChanges();
+                            });
+                          },
+                          icon: Icons.archive_outlined,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Bottom Actions
+                _buildBottomActions(),
+              ],
+            ),
+          ),
+        ));
   }
 
   Widget _buildCategorySection() {
@@ -364,6 +485,7 @@ class _EditLinkScreenState extends State<EditLinkScreen> {
                   if (_showCreateCategoryForm) {
                     _selectedCategory = null;
                   }
+                  _hasChanges = _checkForChanges();
                 });
               },
               icon: Icon(
@@ -403,6 +525,7 @@ class _EditLinkScreenState extends State<EditLinkScreen> {
             onChanged: (value) {
               setState(() {
                 _selectedCategory = value;
+                _hasChanges = _checkForChanges();
               });
             },
           ),
@@ -428,18 +551,26 @@ class _EditLinkScreenState extends State<EditLinkScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: SubmitBtnWidget(
-                isEnabled: _isLoading ||
-                    _isCategoriesLoading ||
-                    _isCreatingNewCategory,
-                isLoading: _isLoading,
-                onPressed: () => _saveLink(),
-              )),
+            width: double.infinity,
+            height: 52,
+            child: SubmitBtnWidget(
+              isEnabled: (_isLoading || _isCategoriesLoading || _isCreatingNewCategory),
+              isLoading: _isLoading || _isCreatingNewCategory,
+              onPressed: () => _saveLink(),
+            ),
+          ),
           const SizedBox(height: 12),
           TextButton(
-            onPressed: _isLoading ? null : () =>   Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HomeScreen())),
+            onPressed: (_isLoading || _isCreatingNewCategory)
+                ? null
+                : () async {
+                    if (await _onWillPop()) {
+                      Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const HomeScreen()));
+                    }
+                  },
             child: const Text(
               'Cancel',
               style: TextStyle(

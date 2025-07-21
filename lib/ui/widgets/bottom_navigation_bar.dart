@@ -1,4 +1,5 @@
 import 'package:clipo_app/ui/screens/home_screen.dart';
+import 'package:clipo_app/ui/screens/links/add_link_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:clipo_app/ui/screens/categories/categoires_screen.dart';
 import 'package:clipo_app/ui/screens/links/serach_screen.dart';
@@ -23,19 +24,19 @@ class BottomNavigationBarWidget extends StatelessWidget {
       case 1:
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const CategoriesScreen()),
+          MaterialPageRoute(builder: (context) => const AddLinkScreen()),
         );
         break;
       case 2:
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const FavoritesScreen()),
+          MaterialPageRoute(builder: (context) => const CategoriesScreen()),
         );
         break;
-      case 4:
+      case 3:
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const SearchScreen()),
+          MaterialPageRoute(builder: (context) => const FavoritesScreen()),
         );
         break;
       // Add navigation for other indexes if needed
@@ -55,26 +56,33 @@ class BottomNavigationBarWidget extends StatelessWidget {
           selectedColor: Colors.purple,
         ),
 
+         /// add link
+        SalomonBottomBarItem(
+          icon: Icon(Icons.add_link_outlined,size: 40),
+          unselectedColor: Colors.blue ,
+          title: Text("New"),
+          selectedColor: Colors.lightBlue,
+        ),
         /// Categories
         SalomonBottomBarItem(
           icon: Icon(Icons.category),
           title: Text("Categories"),
-          selectedColor: Colors.pink,
+          selectedColor: Colors.orange,
         ),
 
         /// favorites
         SalomonBottomBarItem(
           icon: Icon(Icons.favorite),
           title: Text("Favorites"),
-          selectedColor: Colors.orange,
+          selectedColor: Colors.redAccent,
         ),
 
-         /// settings
-        SalomonBottomBarItem(
+         // settings
+        /*SalomonBottomBarItem(
           icon: Icon(Icons.settings),
           title: Text("settings"),
           selectedColor: Colors.pink,
-        ),
+        ),*/
 
       ],
     );

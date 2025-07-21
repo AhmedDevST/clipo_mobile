@@ -19,7 +19,7 @@ class CategoriesScreen extends StatefulWidget {
 }
 
 class _CategoriesScreenState extends State<CategoriesScreen> {
-  final int _selectedIndex = 1;
+  final int _selectedIndex = 2;
 
   late List<CategoryModel> _categories = [];
   late final AppDatabase _database;
@@ -75,40 +75,12 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
           message: 'Your operation completed successfully!',
         );
       } catch (e) {
-        showErrorSnackBar('Error deleting category: $e');
+        AwesomeSnackBarUtils.showError(
+            context: context,
+            title: 'Error!',
+            message: 'Error deleting category: $e');
       }
     }
-  }
-
-  void showSuccessSnackBar(String message, Color backgroundColor) {
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: backgroundColor,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
-
-  void showErrorSnackBar(String message) {
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red[600],
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-      ),
-    );
   }
 
   @override

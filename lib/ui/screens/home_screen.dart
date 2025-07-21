@@ -141,19 +141,6 @@ class _HomeScreenState extends State<HomeScreen>
           onPressed: _navigateToSearch,
         ),
       ),
-      actions: [
-        Container(
-          margin: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.blue[600],
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: IconButton(
-            icon: const Icon(Icons.add_outlined, color: Colors.white),
-            onPressed: _navigateToAddLink,
-          ),
-        ),
-      ],
     );
   }
 
