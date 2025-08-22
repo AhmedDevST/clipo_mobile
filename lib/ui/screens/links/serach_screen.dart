@@ -19,6 +19,7 @@ class SearchScreen extends StatefulWidget {
 class _SearchScreenState extends State<SearchScreen>
     with TickerProviderStateMixin, LinkActionsMixin {
   final TextEditingController _searchController = TextEditingController();
+
   // Getters required by the mixin
   @override
   LinkRepo get linkRepo => _linkRepo;
@@ -30,7 +31,7 @@ class _SearchScreenState extends State<SearchScreen>
   set links(List<LinkModel> value) => _searchResults = value;
 
   @override
-  Future<void> reloadLinks() => _performSearch();
+  Future<void> reloadLinks() => _performSearch(refresh: true);
 
   // Search and filter states
   CategoryModel? _selectedCategory;
@@ -46,10 +47,16 @@ class _SearchScreenState extends State<SearchScreen>
 
   List<CategoryModel> _categories = [];
   List<LinkModel> _searchResults = [];
-  List<LinkModel> _filteredResults = [];
   bool _isLoading = false;
   bool _hasSearched = false;
   bool _isCategoriesLoading = false;
+
+  // Store current search parameters for pagination
+  String? _currentQueryText;
+  String? _currentCategoryId;
+  DateTimeRange? _currentDateRange;
+  bool _currentFavoritesOnly = false;
+  bool _currentArchivedOnly = false;
 
   // Animation controllers
   late AnimationController _filterAnimationController;
@@ -145,8 +152,21 @@ class _SearchScreenState extends State<SearchScreen>
     }
   }
 
-  Future<void> _performSearch() async {
+  Future<void> _performSearch({bool refresh = false}) async {
     final queryText = _searchController.text.trim();
+
+    // Store current search parameters
+    _currentQueryText = queryText.isEmpty ? null : queryText;
+    _currentCategoryId = _selectedCategory?.id;
+    _currentDateRange = _selectedDateRange;
+    _currentFavoritesOnly = _favoritesOnly;
+    _currentArchivedOnly = _archivedOnly;
+
+    // Reset pagination if this is a new search
+    if (refresh) {
+      resetPagination();
+    }
+
     // Close filters section after search
     if (_showFilters) {
       setState(() {
@@ -161,22 +181,26 @@ class _SearchScreenState extends State<SearchScreen>
     });
 
     try {
-      List<LinkModel> links;
-      // Search with text
-      links = await _linkRepo.searchLinksAdvanced(
-        queryText: queryText,
-        categoryId: _selectedCategory?.id,
-        dateRange: _selectedDateRange,
-        favoritesOnly: _favoritesOnly,
-        archivedOnly: _archivedOnly,
+      // Use paginated search
+      final links = await _linkRepo.searchLinksPaginated(
+        queryText: _currentQueryText,
+        categoryId: _currentCategoryId,
+        dateRange: _currentDateRange,
+        favoritesOnly: _currentFavoritesOnly,
+        archivedOnly: _currentArchivedOnly,
+        limit: pageSize,
+        offset: 0,
       );
+
       // Apply sorting
-      links = _applySorting(links);
+      final sortedLinks = _applySorting(links);
+
       setState(() {
         _isLoading = false;
-        _searchResults = links;
-        _filteredResults = links;
+        _searchResults = sortedLinks;
+        updatePaginationState(sortedLinks);
       });
+
       _fadeAnimationController.forward();
     } catch (e) {
       setState(() => _isLoading = false);
@@ -191,6 +215,26 @@ class _SearchScreenState extends State<SearchScreen>
         ),
       );
     }
+  }
+
+  // Load more search results
+  Future<void> _loadMoreSearchResults() async {
+    await loadMore(
+      loadFunction: (limit, offset) async {
+        final links = await _linkRepo.searchLinksPaginated(
+          queryText: _currentQueryText,
+          categoryId: _currentCategoryId,
+          dateRange: _currentDateRange,
+          favoritesOnly: _currentFavoritesOnly,
+          archivedOnly: _currentArchivedOnly,
+          limit: limit,
+          offset: offset,
+        );
+
+        // Apply sorting to new results
+        return _applySorting(links);
+      },
+    );
   }
 
   List<LinkModel> _applySorting(List<LinkModel> links) {
@@ -231,10 +275,20 @@ class _SearchScreenState extends State<SearchScreen>
       _favoritesOnly = false;
       _archivedOnly = false;
       _searchResults = [];
-      _filteredResults = [];
       _hasSearched = false;
-      _showFilters = false; // Also close filters when clearing
+      _showFilters = false;
     });
+
+    // Reset pagination
+    resetPagination();
+
+    // Clear current search parameters
+    _currentQueryText = null;
+    _currentCategoryId = null;
+    _currentDateRange = null;
+    _currentFavoritesOnly = false;
+    _currentArchivedOnly = false;
+
     _fadeAnimationController.reset();
     _filterAnimationController.reset();
   }
@@ -248,7 +302,7 @@ class _SearchScreenState extends State<SearchScreen>
       _archivedOnly = false;
     });
     if (_hasSearched) {
-      _performSearch();
+      _performSearch(refresh: true);
     }
   }
 
@@ -293,6 +347,7 @@ class _SearchScreenState extends State<SearchScreen>
     _filterAnimationController.dispose();
     _fadeAnimationController.dispose();
     _searchController.dispose();
+    _database.close();
     super.dispose();
   }
 
@@ -392,7 +447,7 @@ class _SearchScreenState extends State<SearchScreen>
               ),
             ),
             onChanged: (value) => setState(() {}),
-            onSubmitted: (value) => _performSearch(),
+            onSubmitted: (value) => _performSearch(refresh: true),
           ),
           const SizedBox(height: 12),
           // Action buttons
@@ -400,7 +455,7 @@ class _SearchScreenState extends State<SearchScreen>
             children: [
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: _performSearch,
+                  onPressed: () => _performSearch(refresh: true),
                   icon: const Icon(Icons.search, size: 20),
                   label: const Text('Search'),
                   style: ElevatedButton.styleFrom(
@@ -897,16 +952,19 @@ class _SearchScreenState extends State<SearchScreen>
               ],
             ),
           ),
-          // Results list
+          // Results list with pagination
           Expanded(
             child: LinksListWidget(
               links: _searchResults,
-               onEdit: (link) => handleEditLink(link),
+              onEdit: (link) => handleEditLink(link),
               onTap: (link) => handleLinkTap(link),
               onDelete: (link) => deleteLink(link),
               onToggleFavorite: (link) => toggleFavorite(link),
               onShare: (link) => shareLink(link),
               fadeAnimation: _fadeAnimation,
+              hasMoreData: hasMoreData,
+              isLoadingMore: isLoadingMore,
+              onLoadMore: _loadMoreSearchResults,
             ),
           ),
         ],

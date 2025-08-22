@@ -26,7 +26,8 @@ class _FavoritesScreenState extends State<FavoritesScreen>
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   bool _isLoading = true;
-// Getters required by the mixin
+
+  // Getters required by the mixin
   @override
   LinkRepo get linkRepo => _linkRepo;
 
@@ -37,7 +38,8 @@ class _FavoritesScreenState extends State<FavoritesScreen>
   set links(List<LinkModel> value) => _links = value;
 
   @override
-  Future<void> reloadLinks() => _loadLinks();
+  Future<void> reloadLinks() => _loadLinks(refresh: true);
+
   @override
   void initState() {
     super.initState();
@@ -66,19 +68,42 @@ class _FavoritesScreenState extends State<FavoritesScreen>
     ));
   }
 
-  // Data loading methods
-  Future<void> _loadLinks() async {
+  Future<void> _loadLinks({bool refresh = false}) async {
+    if (refresh) {
+      resetPagination();
+    }
+
     setState(() {
       _isLoading = true;
     });
 
-    final links = await _linkRepo.getFavoriteLinks();
-    setState(() {
-      _links = links;
-      _isLoading = false;
-    });
+    try {
+      final initialLinks = await _linkRepo.getFavoriteLinksPaginated(
+        limit: pageSize,
+        offset: 0,
+      );
 
-    _animationController.forward();
+      setState(() {
+        _links = initialLinks;
+        updatePaginationState(initialLinks);
+        _isLoading = false;
+      });
+
+      _animationController.forward();
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadMoreFavorites() async {
+    await loadMore(
+      loadFunction: (limit, offset) => _linkRepo.getFavoriteLinksPaginated(
+        limit: limit,
+        offset: offset,
+      ),
+    );
   }
 
   // Override toggleFavorite to reload links after toggling
@@ -103,7 +128,7 @@ class _FavoritesScreenState extends State<FavoritesScreen>
               ? 'Added to favorites'
               : 'Removed from favorites');
     } catch (e) {
-     AwesomeSnackBarUtils.showError(
+      AwesomeSnackBarUtils.showError(
           context: context,
           title: 'Error',
           message: 'Error updating favorite: $e');
@@ -147,7 +172,7 @@ class _FavoritesScreenState extends State<FavoritesScreen>
 
   Widget _buildBody() {
     return RefreshIndicator(
-      onRefresh: () async => _loadLinks(),
+      onRefresh: () async => _loadLinks(refresh: true),
       color: Colors.blue[600],
       child: _isLoading
           ? LoadingWidget(
@@ -168,6 +193,9 @@ class _FavoritesScreenState extends State<FavoritesScreen>
                   onToggleFavorite: (link) => toggleFavorite(link),
                   onShare: (link) => shareLink(link),
                   fadeAnimation: _fadeAnimation,
+                  hasMoreData: hasMoreData,
+                  isLoadingMore: isLoadingMore,
+                  onLoadMore: _loadMoreFavorites,
                 ),
     );
   }

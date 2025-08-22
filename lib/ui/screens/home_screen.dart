@@ -39,7 +39,7 @@ class _HomeScreenState extends State<HomeScreen>
   set links(List<LinkModel> value) => _links = value;
 
   @override
-  Future<void> reloadLinks() => _loadLinks();
+  Future<void> reloadLinks() => _loadLinks(refresh: true);
 
   @override
   void initState() {
@@ -69,18 +69,42 @@ class _HomeScreenState extends State<HomeScreen>
     ));
   }
 
-  Future<void> _loadLinks() async {
+  Future<void> _loadLinks({bool refresh = false}) async {
+    if (refresh) {
+      resetPagination();
+    }
+
     setState(() {
       _isLoading = true;
     });
 
-    final links = await _linkRepo.getAllLinks();
-    setState(() {
-      _links = links;
-      _isLoading = false;
-    });
+    try {
+      final initialLinks = await _linkRepo.getLinksPaginated(
+        limit: pageSize,
+        offset: 0,
+      );
 
-    _animationController.forward();
+      setState(() {
+        _links = initialLinks;
+        updatePaginationState(initialLinks);
+        _isLoading = false;
+      });
+
+      _animationController.forward();
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadMoreLinks() async {
+    await loadMore(
+      loadFunction: (limit, offset) => _linkRepo.getLinksPaginated(
+        limit: limit,
+        offset: offset,
+      ),
+    );
   }
 
   // Navigation methods
@@ -146,7 +170,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildBody() {
     return RefreshIndicator(
-      onRefresh: () async => _loadLinks(),
+      onRefresh: () async => _loadLinks(refresh: true),
       color: Colors.blue[600],
       child: _isLoading
           ? LoadingWidget(
@@ -172,6 +196,9 @@ class _HomeScreenState extends State<HomeScreen>
                   onToggleFavorite: (link) => toggleFavorite(link),
                   onShare: (link) => shareLink(link),
                   fadeAnimation: _fadeAnimation,
+                  hasMoreData: hasMoreData,
+                  isLoadingMore: isLoadingMore,
+                  onLoadMore: _loadMoreLinks,
                 ),
     );
   }

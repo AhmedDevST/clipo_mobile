@@ -14,6 +14,72 @@ mixin LinkActionsMixin<T extends StatefulWidget> on State<T> {
 
   Future<void> reloadLinks();
 
+  // Simple pagination variables
+  static const int _pageSize = 10;
+  bool _hasMoreData = true;
+  bool _isLoadingMore = false;
+  int _currentPage = 0;
+
+  // Pagination getters
+  bool get hasMoreData => _hasMoreData;
+  bool get isLoadingMore => _isLoadingMore;
+  int get currentPage => _currentPage;
+  int get pageSize => _pageSize;
+
+  // Reset pagination
+  void resetPagination() {
+    _currentPage = 0;
+    _hasMoreData = true;
+    _isLoadingMore = false;
+  }
+
+  // Update pagination state after loading
+  void updatePaginationState(List<LinkModel> newLinks,
+      {bool isLoadMore = false}) {
+    if (isLoadMore) {
+      _currentPage++;
+      _hasMoreData = newLinks.length == _pageSize;
+    } else {
+      _currentPage = 0;
+      _hasMoreData = newLinks.length == _pageSize;
+    }
+    _isLoadingMore = false;
+  }
+
+  // Generic load more method
+  Future<void> loadMore({
+    required Future<List<LinkModel>> Function(int limit, int offset)
+        loadFunction,
+  }) async {
+    if (_isLoadingMore || !_hasMoreData) return;
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    try {
+      final offset = (_currentPage + 1) * _pageSize;
+      final newLinks = await loadFunction(_pageSize, offset);
+
+      setState(() {
+        links = [...links, ...newLinks];
+        updatePaginationState(newLinks, isLoadMore: true);
+      });
+    } catch (e) {
+      setState(() {
+        _isLoadingMore = false;
+      });
+
+      if (mounted) {
+        AwesomeSnackBarUtils.showError(
+          context: context,
+          title: 'Error',
+          message: 'Error loading more links: $e',
+        );
+      }
+    }
+  }
+
   // Common link action methods
   Future<void> deleteLink(LinkModel link) async {
     bool? confirmed = await showDialog<bool>(
