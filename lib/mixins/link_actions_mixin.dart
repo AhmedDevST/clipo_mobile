@@ -6,7 +6,7 @@ import 'package:clipo_app/models/Link.dart';
 import 'package:clipo_app/database/local/repo/link_repo.dart';
 import 'package:clipo_app/ui/widgets/dialog/ConfirmationDialog.dart';
 import 'package:clipo_app/ui/widgets/dialog/awesome_snackbar.dart';
-
+import 'package:share_plus/share_plus.dart';
 mixin LinkActionsMixin<T extends StatefulWidget> on State<T> {
   LinkRepo get linkRepo;
   List<LinkModel> get links;
@@ -138,8 +138,12 @@ mixin LinkActionsMixin<T extends StatefulWidget> on State<T> {
   }
 
   Future<void> shareLink(LinkModel link) async {
-    AwesomeSnackBarUtils.showInfo(
-        context: context, title: 'sharing', message: 'Sharing: ${link.title}');
+    if (link.url != null) {
+      Share.share(link.url);
+    } else {
+      AwesomeSnackBarUtils.showInfo(
+          context: context, title: 'sharing', message: 'No URL to share');
+    }
   }
 
   Future<void> launchURL(String url) async {

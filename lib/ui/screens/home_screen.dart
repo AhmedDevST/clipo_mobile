@@ -147,7 +147,7 @@ class _HomeScreenState extends State<HomeScreen>
       elevation: 0,
       centerTitle: true,
       title: const Text(
-        'LinkSaver',
+        'Clipo',
         style: TextStyle(
           color: Colors.black87,
           fontWeight: FontWeight.w700,

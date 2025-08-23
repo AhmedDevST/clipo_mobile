@@ -103,7 +103,7 @@ class LinkCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        link.category != null ? link.category!.name : 'General',
+                        link.category != null ? link.category!.name : 'No Category',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,

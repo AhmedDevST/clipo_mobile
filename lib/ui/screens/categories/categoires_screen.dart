@@ -10,6 +10,7 @@ import 'package:clipo_app/ui/screens/categories/add_category_screen.dart';
 import 'package:clipo_app/ui/screens/categories/edit_category_screen.dart';
 import 'package:clipo_app/ui/widgets/dialog/ConfirmationDialog.dart';
 import 'package:clipo_app/ui/widgets/dialog/awesome_snackbar.dart';
+import 'package:clipo_app/ui/screens/categories/add_category_screen.dart';
 
 class CategoriesScreen extends StatefulWidget {
   const CategoriesScreen({super.key});
@@ -50,7 +51,12 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
       _isLoading = false;
     });
   }
-
+  void _navigateToAddCategory() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const NewCategoryPage()),
+    );
+  }
   Future<void> deleteCategory(CategoryModel category) async {
     bool? confirmed = await showDialog<bool>(
       context: context,
@@ -127,7 +133,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                       title: 'No categories saved yet',
                       subtitle: 'Save your first category to get started.',
                       actionText: 'Add Category',
-                      onAction: () {},
+                      onAction: () {
+                          _navigateToAddCategory();
+                      },
                     )
                   : GridView.builder(
                       physics: const AlwaysScrollableScrollPhysics(),
