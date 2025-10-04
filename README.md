@@ -6,14 +6,14 @@ Clipo is a feature-rich, cross-platform link management application built with F
 
 <table>
   <tr>
-    <td><img src="assets/screenshots/home_screen.png" width="200" alt="Home Screen"/></td>
-    <td><img src="assets/screenshots/share_menu.png" width="200" alt="Share Menu"/></td>
-    <td><img src="assets/screenshots/link_management.png" width="200" alt="Link Management"/></td>
+    <td><img src="assets/Screenshots/home.png" width="200" alt="Home Screen"/></td>
+    <td><img src="assets/Screenshots/ad.png" width="200" alt="New Link "/></td>
+    <td><img src="assets/Screenshots/serach.png" width="200" alt="Link Management"/></td>
   </tr>
   <tr>
     <td align="center"><b>Home Screen</b></td>
-    <td align="center"><b>Share Menu</b></td>
-    <td align="center"><b>New link</b></td>
+    <td align="center"><b>New  Link</b></td>
+    <td align="center"><b>link management</b></td>
   </tr>
 </table>
 
